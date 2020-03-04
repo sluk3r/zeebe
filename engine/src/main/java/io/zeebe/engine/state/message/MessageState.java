@@ -86,9 +86,11 @@ public final class MessageState {
    * <pre> workflow instance key -> correlation key
    *
    * get correlation key by workflow instance key */
+  private final CorrelationKey correlationKeyValue;
+
   private final DbLong workflowInstanceKey;
 
-  private final ColumnFamily<DbLong, DbString> workflowInstanceCorrelationKeyColumnFamiliy;
+  private final ColumnFamily<DbLong, CorrelationKey> workflowInstanceCorrelationKeyColumnFamily;
 
   public MessageState(final ZeebeDb<ZbColumnFamilies> zeebeDb, final DbContext dbContext) {
     messageKey = new DbLong();
@@ -134,12 +136,13 @@ public final class MessageState {
             DbNil.INSTANCE);
 
     workflowInstanceKey = new DbLong();
-    workflowInstanceCorrelationKeyColumnFamiliy =
+    correlationKeyValue = new CorrelationKey();
+    workflowInstanceCorrelationKeyColumnFamily =
         zeebeDb.createColumnFamily(
             ZbColumnFamilies.MESSAGE_WORKFLOW_INSTANCE_CORRELATION_KEYS,
             dbContext,
             workflowInstanceKey,
-            correlationKey);
+            correlationKeyValue);
   }
 
   public void put(final Message message) {
@@ -226,8 +229,9 @@ public final class MessageState {
     ensureNotNullOrEmpty("correlation key", correlationKey);
 
     this.workflowInstanceKey.wrapLong(workflowInstanceKey);
-    this.correlationKey.wrapBuffer(correlationKey);
-    workflowInstanceCorrelationKeyColumnFamiliy.put(this.workflowInstanceKey, this.correlationKey);
+    this.correlationKeyValue.set(correlationKey);
+    workflowInstanceCorrelationKeyColumnFamily.put(
+        this.workflowInstanceKey, this.correlationKeyValue);
   }
 
   public DirectBuffer getWorkflowInstanceCorrelationKey(final long workflowInstanceKey) {
@@ -235,16 +239,16 @@ public final class MessageState {
 
     this.workflowInstanceKey.wrapLong(workflowInstanceKey);
     final var correlationKey =
-        workflowInstanceCorrelationKeyColumnFamiliy.get(this.workflowInstanceKey);
+        workflowInstanceCorrelationKeyColumnFamily.get(this.workflowInstanceKey);
 
-    return correlationKey != null ? correlationKey.getBuffer() : null;
+    return correlationKey != null ? correlationKey.get() : null;
   }
 
   public void removeWorkflowInstanceCorrelationKey(final long workflowInstanceKey) {
     ensureGreaterThan("workflow instance key", workflowInstanceKey, 0);
 
     this.workflowInstanceKey.wrapLong(workflowInstanceKey);
-    workflowInstanceCorrelationKeyColumnFamiliy.delete(this.workflowInstanceKey);
+    workflowInstanceCorrelationKeyColumnFamily.delete(this.workflowInstanceKey);
   }
 
   public void visitMessages(
