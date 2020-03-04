@@ -45,6 +45,18 @@ public final class IncidentRecord extends UnifiedRecordValue
         .declareProperty(variableScopeKeyProp);
   }
 
+  public void wrap(final IncidentRecord record) {
+    errorTypeProp.setValue(record.errorTypeProp.getValue());
+    errorMessageProp.setValue(record.errorMessageProp.getValue());
+    bpmnProcessIdProp.setValue(record.bpmnProcessIdProp.getValue());
+    workflowKeyProp.setValue(record.workflowKeyProp.getValue());
+    workflowInstanceKeyProp.setValue(record.workflowInstanceKeyProp.getValue());
+    elementIdProp.setValue(record.elementIdProp.getValue());
+    elementInstanceKeyProp.setValue(record.elementInstanceKeyProp.getValue());
+    jobKeyProp.setValue(record.jobKeyProp.getValue());
+    variableScopeKeyProp.setValue(record.variableScopeKeyProp.getValue());
+  }
+
   public IncidentRecord initFromWorkflowInstanceFailure(
       final long key, final WorkflowInstanceRecord workflowInstanceEvent) {
 
