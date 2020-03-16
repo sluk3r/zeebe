@@ -15,9 +15,7 @@ import io.zeebe.el.Expression;
 import io.zeebe.el.ExpressionLanguage;
 import io.zeebe.el.ResultType;
 import io.zeebe.engine.state.instance.VariablesState;
-import io.zeebe.protocol.record.value.ErrorType;
 import java.util.Optional;
-import java.util.function.Function;
 import org.agrona.DirectBuffer;
 import org.agrona.concurrent.UnsafeBuffer;
 
@@ -36,8 +34,9 @@ public final class ExpressionProcessor {
   }
 
   /**
-   * Evaluates the given expression and returns the result as string. If the evaluation fails or the
-   * result is not a string then an incident is raised.
+   * Evaluates the given expression and returns the result as string wrapped in {@link
+   * DirectBuffer}. If the evaluation fails or the result is not a string then an incident is
+   * raised.
    *
    * @param expression the expression to evaluate
    * @param context the element context to load the variables from
@@ -46,7 +45,11 @@ public final class ExpressionProcessor {
   public Optional<DirectBuffer> evaluateStringExpression(
       final Expression expression, final BpmnStepContext<?> context) {
 
-    return evaluateExpression(expression, context, ResultType.STRING, EvaluationResult::getString)
+    return evaluateExpression(
+            expression,
+            context.getKey(),
+            new ExpressionResultTypeVerifyingIncidentRaisingHandler<>(
+                ResultType.STRING, context, EvaluationResult::getString))
         .map(this::wrapResult);
   }
 
@@ -62,32 +65,20 @@ public final class ExpressionProcessor {
       final Expression expression, final BpmnStepContext<?> context) {
 
     return evaluateExpression(
-        expression, context, ResultType.BOOLEAN, EvaluationResult::getBoolean);
+        expression,
+        context.getKey(),
+        new ExpressionResultTypeVerifyingIncidentRaisingHandler<Boolean>(
+            ResultType.BOOLEAN, context, EvaluationResult::getBoolean));
   }
 
-  private <T> Optional<T> evaluateExpression(
+  public <T> T evaluateExpression(
       final Expression expression,
-      final BpmnStepContext<?> context,
-      final ResultType expectedResultType,
-      final Function<EvaluationResult, T> resultExtractor) {
+      final long variableScopeKey,
+      final ExpressionResultHandler<T> resultHandler) {
 
-    final var evaluationResult = evaluateExpression(expression, context.getKey());
+    final var evaluationResult = evaluateExpression(expression, variableScopeKey);
 
-    if (evaluationResult.isFailure()) {
-      context.raiseIncident(ErrorType.EXTRACT_VALUE_ERROR, evaluationResult.getFailureMessage());
-      return Optional.empty();
-    }
-
-    if (evaluationResult.getType() != expectedResultType) {
-      context.raiseIncident(
-          ErrorType.EXTRACT_VALUE_ERROR,
-          String.format(
-              "Expected result of the expression '%s' to be '%s', but was '%s'.",
-              evaluationResult.getExpression(), expectedResultType, evaluationResult.getType()));
-      return Optional.empty();
-    }
-
-    return Optional.of(resultExtractor.apply(evaluationResult));
+    return resultHandler.handleEvaluationResult(evaluationResult);
   }
 
   private EvaluationResult evaluateExpression(

@@ -7,9 +7,11 @@
  */
 package io.zeebe.engine.processor.workflow;
 
-import static io.zeebe.util.buffer.BufferUtil.bufferAsString;
 import static io.zeebe.util.buffer.BufferUtil.cloneBuffer;
 
+import io.zeebe.el.EvaluationResult;
+import io.zeebe.el.Expression;
+import io.zeebe.el.ResultType;
 import io.zeebe.engine.processor.TypedStreamWriter;
 import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableCatchEvent;
 import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableCatchEventSupplier;
@@ -23,8 +25,6 @@ import io.zeebe.engine.state.instance.TimerInstance;
 import io.zeebe.engine.state.message.WorkflowInstanceSubscription;
 import io.zeebe.model.bpmn.util.time.Timer;
 import io.zeebe.msgpack.query.MsgPackQueryProcessor;
-import io.zeebe.msgpack.query.MsgPackQueryProcessor.QueryResult;
-import io.zeebe.msgpack.query.MsgPackQueryProcessor.QueryResults;
 import io.zeebe.protocol.impl.SubscriptionUtil;
 import io.zeebe.protocol.impl.record.value.timer.TimerRecord;
 import io.zeebe.protocol.record.intent.TimerIntent;
@@ -34,10 +34,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.agrona.DirectBuffer;
+import org.agrona.concurrent.UnsafeBuffer;
 
 public final class CatchEventBehavior {
 
   private final ZeebeState state;
+  private final ExpressionProcessor expressionProcessor;
   private final SubscriptionCommandSender subscriptionCommandSender;
   private final int partitionsCount;
 
@@ -48,9 +50,11 @@ public final class CatchEventBehavior {
 
   public CatchEventBehavior(
       final ZeebeState state,
+      final ExpressionProcessor exporessionProcessor,
       final SubscriptionCommandSender subscriptionCommandSender,
       final int partitionsCount) {
     this.state = state;
+    this.expressionProcessor = exporessionProcessor;
     this.subscriptionCommandSender = subscriptionCommandSender;
     this.partitionsCount = partitionsCount;
   }
@@ -211,32 +215,16 @@ public final class CatchEventBehavior {
 
   private DirectBuffer extractCorrelationKey(
       final ExecutableMessage message, final MessageCorrelationKeyContext context) {
-    final QueryResults results =
-        queryProcessor.process(message.getCorrelationKey(), context.getVariablesAsDocument());
-    final String errorMessage;
 
-    if (results.size() == 1) {
-      final QueryResult result = results.getSingleResult();
-      if (result.isString()) {
-        return result.getString();
-      }
+    final Expression correlationKeyExpression = message.getCorrelationKeyExpression();
 
-      if (result.isLong()) {
-        return result.getLongAsString();
-      }
+    final String correlationKey =
+        expressionProcessor.evaluateExpression(
+            correlationKeyExpression,
+            context.getVariablesScopeKey(),
+            new CorrelationKeyExtractionResultHandler(context));
 
-      errorMessage = "the value must be either a string or a number";
-    } else if (results.size() > 1) {
-      errorMessage = "multiple values found";
-    } else {
-      errorMessage = "no value found";
-    }
-
-    final String expression = bufferAsString(message.getCorrelationKey().getExpression());
-    final String failureMessage =
-        String.format(
-            "Failed to extract the correlation-key by '%s': %s", expression, errorMessage);
-    throw new MessageCorrelationKeyException(context, failureMessage);
+    return new UnsafeBuffer(correlationKey.getBytes());
   }
 
   private boolean sendCloseMessageSubscriptionCommand(
@@ -285,5 +273,49 @@ public final class CatchEventBehavior {
     }
 
     return extractedCorrelationKeys;
+  }
+
+  protected static final class CorrelationKeyExtractionResultHandler
+      implements ExpressionResultHandler<String> {
+
+    private final MessageCorrelationKeyContext context;
+
+    protected CorrelationKeyExtractionResultHandler(MessageCorrelationKeyContext context) {
+      this.context = context;
+    }
+
+    @Override
+    public String handleEvaluationResult(final EvaluationResult evaluationResult) {
+      if (evaluationResult.isFailure()) {
+        throw new MessageCorrelationKeyException(context, evaluationResult.getFailureMessage());
+      }
+      if (evaluationResult.getType() == ResultType.STRING) {
+        return evaluationResult.getString();
+      } else if (evaluationResult.getType() == ResultType.NUMBER) {
+
+        final Number correlationKeyNumber = evaluationResult.getNumber();
+        if ((correlationKeyNumber instanceof Float) || (correlationKeyNumber instanceof Double)) {
+          final String failureMessage =
+              String.format(
+                  "Failed to extract the correlation key for '%s'. Value was not an integer: %f",
+                  evaluationResult.getExpression(), correlationKeyNumber);
+          throw new MessageCorrelationKeyException(context, failureMessage);
+        }
+
+        return Long.toString(correlationKeyNumber.longValue());
+      } else if (evaluationResult.getType() == ResultType.ARRAY) {
+        final String failureMessage =
+            String.format(
+                "Failed to extract the correlation key for '%s': Array of multiple values found.",
+                evaluationResult.getExpression());
+        throw new MessageCorrelationKeyException(context, failureMessage);
+      } else {
+        final String failureMessage =
+            String.format(
+                "Failed to extract the correlation key for '%s': The value must be either a string or a number, but was %s.",
+                evaluationResult.getExpression(), evaluationResult.getType().toString());
+        throw new MessageCorrelationKeyException(context, failureMessage);
+      }
+    }
   }
 }
