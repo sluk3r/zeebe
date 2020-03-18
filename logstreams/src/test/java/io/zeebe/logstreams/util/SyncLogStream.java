@@ -12,6 +12,7 @@ import io.zeebe.logstreams.log.LogStreamBatchWriter;
 import io.zeebe.logstreams.log.LogStreamBuilder;
 import io.zeebe.logstreams.log.LogStreamReader;
 import io.zeebe.logstreams.log.LogStreamRecordWriter;
+import java.util.concurrent.TimeUnit;
 
 public class SyncLogStream implements SynchronousLogStream {
 
@@ -46,12 +47,12 @@ public class SyncLogStream implements SynchronousLogStream {
 
   @Override
   public void close() {
-    logStream.closeAsync().join();
+    logStream.closeAsync().join(5, TimeUnit.SECONDS);
   }
 
   @Override
   public long getCommitPosition() {
-    return logStream.getCommitPositionAsync().join();
+    return logStream.getCommitPositionAsync().join(5, TimeUnit.SECONDS);
   }
 
   @Override
@@ -61,16 +62,16 @@ public class SyncLogStream implements SynchronousLogStream {
 
   @Override
   public LogStreamReader newLogStreamReader() {
-    return logStream.newLogStreamReader().join();
+    return logStream.newLogStreamReader().join(5, TimeUnit.SECONDS);
   }
 
   @Override
   public LogStreamRecordWriter newLogStreamRecordWriter() {
-    return logStream.newLogStreamRecordWriter().join();
+    return logStream.newLogStreamRecordWriter().join(5, TimeUnit.SECONDS);
   }
 
   @Override
   public LogStreamBatchWriter newLogStreamBatchWriter() {
-    return logStream.newLogStreamBatchWriter().join();
+    return logStream.newLogStreamBatchWriter().join(5, TimeUnit.SECONDS);
   }
 }

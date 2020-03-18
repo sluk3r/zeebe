@@ -13,6 +13,7 @@ import io.zeebe.util.sched.ActorScheduler.ActorSchedulerBuilder;
 import io.zeebe.util.sched.FutureUtil;
 import io.zeebe.util.sched.clock.ActorClock;
 import io.zeebe.util.sched.future.ActorFuture;
+import java.util.concurrent.TimeUnit;
 import org.junit.rules.ExternalResource;
 
 public final class ActorSchedulerRule extends ExternalResource {
@@ -62,7 +63,7 @@ public final class ActorSchedulerRule extends ExternalResource {
 
   @Override
   public void after() {
-    FutureUtil.join(actorScheduler.stop());
+    FutureUtil.join(actorScheduler.stop(), 5, TimeUnit.SECONDS);
     actorScheduler = null;
     builder = null;
   }
