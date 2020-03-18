@@ -63,7 +63,7 @@ public final class ActorSchedulerRule extends ExternalResource {
 
   @Override
   public void after() {
-    FutureUtil.join(actorScheduler.stop(), 5, TimeUnit.SECONDS);
+    FutureUtil.join(actorScheduler.stop(), 30, TimeUnit.SECONDS);
     actorScheduler = null;
     builder = null;
   }
