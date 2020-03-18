@@ -47,12 +47,12 @@ public class SyncLogStream implements SynchronousLogStream {
 
   @Override
   public void close() {
-    logStream.closeAsync().join(5, TimeUnit.SECONDS);
+    logStream.closeAsync().join(15, TimeUnit.SECONDS);
   }
 
   @Override
   public long getCommitPosition() {
-    return logStream.getCommitPositionAsync().join(5, TimeUnit.SECONDS);
+    return logStream.getCommitPositionAsync().join(15, TimeUnit.SECONDS);
   }
 
   @Override
@@ -62,16 +62,16 @@ public class SyncLogStream implements SynchronousLogStream {
 
   @Override
   public LogStreamReader newLogStreamReader() {
-    return logStream.newLogStreamReader().join(5, TimeUnit.SECONDS);
+    return logStream.newLogStreamReader().join(15, TimeUnit.SECONDS);
   }
 
   @Override
   public LogStreamRecordWriter newLogStreamRecordWriter() {
-    return logStream.newLogStreamRecordWriter().join(5, TimeUnit.SECONDS);
+    return logStream.newLogStreamRecordWriter().join(15, TimeUnit.SECONDS);
   }
 
   @Override
   public LogStreamBatchWriter newLogStreamBatchWriter() {
-    return logStream.newLogStreamBatchWriter().join(5, TimeUnit.SECONDS);
+    return logStream.newLogStreamBatchWriter().join(15, TimeUnit.SECONDS);
   }
 }
