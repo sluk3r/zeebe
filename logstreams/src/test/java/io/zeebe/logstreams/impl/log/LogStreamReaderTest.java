@@ -105,6 +105,21 @@ public final class LogStreamReaderTest {
   }
 
   @Test
+  public void test() {
+    // given
+    writer.writeEvent(w -> w.key(eventKey).value(EVENT_VALUE));
+    final long position = writer.writeEvent(w -> w.key(eventKey).value(EVENT_VALUE));
+    reader.seek(position);
+
+    // then
+    assertThat(reader.hasNext()).isEqualTo(true);
+    final LoggedEvent next = reader.next();
+    assertThat(next.getKey()).isEqualTo(eventKey);
+    assertThat(next.getPosition()).isEqualTo(position);
+    assertThat(reader.hasNext()).isFalse();
+  }
+
+  @Test
   public void shouldThrowNoSuchElementExceptionOnNextCall() {
     // expect
     expectedException.expectMessage(

@@ -30,7 +30,7 @@ import io.zeebe.logstreams.log.LogStreamRecordWriter;
 import io.zeebe.logstreams.log.LoggedEvent;
 import io.zeebe.logstreams.state.SnapshotStorage;
 import io.zeebe.logstreams.state.StateSnapshotController;
-import io.zeebe.logstreams.util.AtomixLogStorageRule;
+import io.zeebe.logstreams.util.ListLogStorageRule;
 import io.zeebe.logstreams.util.SyncLogStream;
 import io.zeebe.logstreams.util.SynchronousLogStream;
 import io.zeebe.logstreams.util.TestSnapshotStorage;
@@ -119,13 +119,8 @@ public final class TestStreams {
       throw new UncheckedIOException(e);
     }
 
-    final AtomixLogStorageRule logStorageRule =
-        new AtomixLogStorageRule(dataDirectory, partitionId);
-    logStorageRule.open(
-        b ->
-            b.withDirectory(segments)
-                .withMaxEntrySize(4 * 1024 * 1024)
-                .withMaxSegmentSize(128 * 1024 * 1024));
+    final ListLogStorageRule logStorageRule = new ListLogStorageRule(partitionId);
+    logStorageRule.open();
     final var logStream =
         SyncLogStream.builder()
             .withLogName(name)
@@ -354,18 +349,18 @@ public final class TestStreams {
 
   private static final class LogContext implements AutoCloseable {
     private final SynchronousLogStream logStream;
-    private final AtomixLogStorageRule logStorageRule;
+    private final ListLogStorageRule logStorageRule;
     private final LogStreamRecordWriter logStreamWriter;
 
     private LogContext(
-        final SynchronousLogStream logStream, final AtomixLogStorageRule logStorageRule) {
+        final SynchronousLogStream logStream, final ListLogStorageRule logStorageRule) {
       this.logStream = logStream;
       logStreamWriter = logStream.newLogStreamRecordWriter();
       this.logStorageRule = logStorageRule;
     }
 
     public static LogContext createLogContext(
-        final SyncLogStream logStream, final AtomixLogStorageRule logStorageRule) {
+        final SyncLogStream logStream, final ListLogStorageRule logStorageRule) {
       return new LogContext(logStream, logStorageRule);
     }
 

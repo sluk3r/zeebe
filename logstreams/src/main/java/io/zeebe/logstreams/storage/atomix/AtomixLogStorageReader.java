@@ -7,20 +7,21 @@
  */
 package io.zeebe.logstreams.storage.atomix;
 
-import io.atomix.protocols.raft.storage.log.RaftLogReader;
+import io.atomix.protocols.raft.storage.log.entry.RaftLogEntry;
 import io.atomix.protocols.raft.zeebe.ZeebeEntry;
 import io.atomix.storage.journal.Indexed;
+import io.atomix.storage.journal.JournalReader;
 import io.zeebe.logstreams.spi.LogStorage;
 import io.zeebe.logstreams.spi.LogStorageReader;
 import java.util.Optional;
 import org.agrona.DirectBuffer;
 
 public final class AtomixLogStorageReader implements LogStorageReader {
-  private final RaftLogReader reader;
+  private final JournalReader<RaftLogEntry> reader;
   private final ZeebeIndexMapping zeebeIndexMapping;
 
   public AtomixLogStorageReader(
-      final ZeebeIndexMapping zeebeIndexMapping, final RaftLogReader reader) {
+      final ZeebeIndexMapping zeebeIndexMapping, final JournalReader<RaftLogEntry> reader) {
     this.reader = reader;
     this.zeebeIndexMapping = zeebeIndexMapping;
   }

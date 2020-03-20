@@ -30,7 +30,7 @@ public final class LogStreamRule extends ExternalResource {
   private LogStreamReader logStreamReader;
   private LogStreamBuilder builder;
   private ActorSchedulerRule actorSchedulerRule;
-  private AtomixLogStorageRule logStorageRule;
+  private ListLogStorageRule logStorageRule;
 
   private LogStreamRule(
       final TemporaryFolder temporaryFolder,
@@ -82,8 +82,8 @@ public final class LogStreamRule extends ExternalResource {
     final ActorScheduler actorScheduler = actorSchedulerRule.get();
 
     if (logStorageRule == null) {
-      logStorageRule = new AtomixLogStorageRule(temporaryFolder);
-      logStorageRule.open(storageBuilder);
+      logStorageRule = new ListLogStorageRule();
+      logStorageRule.open();
     }
 
     builder =

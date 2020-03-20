@@ -7,18 +7,19 @@
  */
 package io.zeebe.logstreams.storage.atomix;
 
-import io.atomix.protocols.raft.storage.log.RaftLogReader;
+import io.atomix.protocols.raft.storage.log.entry.RaftLogEntry;
+import io.atomix.storage.journal.JournalReader;
 import io.atomix.storage.journal.JournalReader.Mode;
 
 @FunctionalInterface
 public interface AtomixReaderFactory {
-  RaftLogReader create(long index, Mode mode);
+  JournalReader<RaftLogEntry> create(long index, Mode mode);
 
-  default RaftLogReader create(final long index) {
+  default JournalReader<RaftLogEntry> create(final long index) {
     return create(index, Mode.COMMITS);
   }
 
-  default RaftLogReader create() {
+  default JournalReader<RaftLogEntry> create() {
     return create(0);
   }
 }
