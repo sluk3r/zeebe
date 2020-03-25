@@ -35,7 +35,6 @@ public final class OAuthCredentialsProviderBuilder {
   private String clientSecret;
   private String audience;
   private String authorizationServerUrl;
-  private URL authorizationServer;
   private String credentialsCachePath;
   private File credentialsCache;
 
@@ -80,8 +79,8 @@ public final class OAuthCredentialsProviderBuilder {
   }
 
   /** @see OAuthCredentialsProviderBuilder#authorizationServerUrl(String) */
-  URL getAuthorizationServer() {
-    return authorizationServer;
+  String getAuthorizationServerUrl() {
+    return authorizationServerUrl;
   }
 
   /**
@@ -156,7 +155,7 @@ public final class OAuthCredentialsProviderBuilder {
       Objects.requireNonNull(
           authorizationServerUrl, String.format(INVALID_ARGUMENT_MSG, "authorization server URL"));
 
-      authorizationServer = new URL(authorizationServerUrl);
+      new URL(authorizationServerUrl);
       credentialsCache = new File(credentialsCachePath);
 
       if (credentialsCache.isDirectory()) {
