@@ -104,6 +104,7 @@ public final class ZeebePartition extends Actor
   private AtomixLogStorage atomixLogStorage;
   private long deferredCommitPosition;
   private final RaftPartitionHealth raftPartitionHealth;
+  private long term;
 
   public ZeebePartition(
       final BrokerInfo localBroker,
@@ -159,6 +160,7 @@ public final class ZeebePartition extends Actor
   }
 
   private void onRoleChange(final Role newRole, final long newTerm) {
+    this.term = newTerm;
     switch (newRole) {
       case LEADER:
         if (raftRole != Role.LEADER) {
@@ -188,12 +190,22 @@ public final class ZeebePartition extends Actor
         .onComplete(
             (success, error) -> {
               if (error == null) {
-                partitionListeners.forEach(
-                    l -> l.onBecomingLeader(partitionId, newTerm, logStream));
+                partitionListeners.stream()
+                    .map(l -> l.onBecomingLeader(partitionId, newTerm, logStream))
+                    .forEach(
+                        future ->
+                            future.onComplete(
+                                (v, t) -> {
+                                  // Compare with the current term in case a new role transition
+                                  // happened
+                                  if (t != null && this.term == newTerm) {
+                                    onFailureInternal();
+                                  }
+                                }));
+                onRecoveredInternal();
               } else {
                 LOG.error("Failed to install leader partition {}", partitionId, error);
-                // TODO https://github.com/zeebe-io/zeebe/issues/3499
-                onFailure();
+                onFailureInternal();
               }
             });
   }
@@ -205,11 +217,11 @@ public final class ZeebePartition extends Actor
               if (error == null) {
                 partitionListeners.forEach(
                     l -> l.onBecomingFollower(partitionId, newTerm, logStream));
+                onRecoveredInternal();
               } else {
                 LOG.error("Failed to install follower partition {}", partitionId, error);
-                // TODO https://github.com/zeebe-io/zeebe/issues/3499
                 // we should probably retry here
-                onFailure();
+                onFailureInternal();
               }
             });
   }
@@ -250,8 +262,6 @@ public final class ZeebePartition extends Actor
             (nothing, error) -> {
               if (error != null) {
                 LOG.error("Unexpected exception on removing leader partition!", error);
-                // TODO https://github.com/zeebe-io/zeebe/issues/3499
-                // we should probably retry here - step down makes no sense
                 transitionComplete.completeExceptionally(error);
                 return;
               }
@@ -285,7 +295,6 @@ public final class ZeebePartition extends Actor
             (nothing, error) -> {
               if (error != null) {
                 LOG.error("Unexpected exception on removing follower partition!", error);
-                // TODO https://github.com/zeebe-io/zeebe/issues/3499
                 transitionComplete.completeExceptionally(error);
                 return;
               }
@@ -306,8 +315,7 @@ public final class ZeebePartition extends Actor
                   snapshotController.recover();
                   zeebeDb = snapshotController.openDb();
                 } catch (final Exception e) {
-                  // TODO https://github.com/zeebe-io/zeebe/issues/3499
-                  onFailure();
+                  onFailureInternal();
                   LOG.error("Failed to recover from snapshot", e);
                   installFuture.completeExceptionally(
                       new IllegalStateException(
@@ -352,7 +360,7 @@ public final class ZeebePartition extends Actor
               } else {
                 LOG.error("Failed to install log stream for partition {}", partitionId, error);
                 installFuture.completeExceptionally(error);
-                onFailure();
+                onFailureInternal();
               }
             });
     return installFuture;
@@ -427,7 +435,6 @@ public final class ZeebePartition extends Actor
                           if (errorOnInstallSnapshotDirector == null) {
                             installExporter(zeebeDb).onComplete(installFuture);
                           } else {
-                            // TODO https://github.com/zeebe-io/zeebe/issues/3499
                             LOG.error(
                                 "Unexpected error on installing async snapshot director.",
                                 errorOnInstallSnapshotDirector);
@@ -436,7 +443,6 @@ public final class ZeebePartition extends Actor
                         });
               } else {
                 LOG.error("Unexpected error on stream processor installation!", processorFail);
-                // TODO https://github.com/zeebe-io/zeebe/issues/3499
                 installFuture.completeExceptionally(processorFail);
               }
             });
@@ -641,7 +647,7 @@ public final class ZeebePartition extends Actor
     atomixRaftPartition.getServer().addCommitListener(this);
     atomixRaftPartition.addRoleChangeListener(this);
     onRoleChange(atomixRaftPartition.getRole(), atomixRaftPartition.term());
-    onRecovered();
+    onRecoveredInternal();
   }
 
   @Override
@@ -692,12 +698,23 @@ public final class ZeebePartition extends Actor
 
   @Override
   public void onFailure() {
-    actor.run(() -> updateHealthStatus(HealthStatus.UNHEALTHY));
+    actor.run(this::onFailureInternal);
   }
 
   @Override
   public void onRecovered() {
-    actor.run(() -> updateHealthStatus(HealthStatus.HEALTHY));
+    actor.run(this::onRecoveredInternal);
+  }
+
+  private void onFailureInternal() {
+    updateHealthStatus(HealthStatus.UNHEALTHY);
+    if (atomixRaftPartition.getRole() == Role.LEADER) {
+      atomixRaftPartition.stepDown();
+    }
+  }
+
+  private void onRecoveredInternal() {
+    updateHealthStatus(HealthStatus.HEALTHY);
   }
 
   private void updateHealthStatus(final HealthStatus newStatus) {
