@@ -25,7 +25,7 @@ public interface PartitionListener {
    * @param partitionId the corresponding partition id
    * @param term the current term
    * @param logStream the corresponding log stream
-   * @return future
+   * @return future that should be completed by the listener
    */
   ActorFuture<Void> onBecomingFollower(int partitionId, long term, LogStream logStream);
 
@@ -36,7 +36,7 @@ public interface PartitionListener {
    * @param partitionId the corresponding partition id
    * @param term the current term
    * @param logStream the corresponding log stream
-   * @return future
+   * @return future that should be completed by the listener
    */
   ActorFuture<Void> onBecomingLeader(int partitionId, long term, LogStream logStream);
 }

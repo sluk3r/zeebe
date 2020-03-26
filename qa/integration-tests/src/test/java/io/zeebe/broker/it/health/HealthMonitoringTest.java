@@ -17,6 +17,7 @@ import io.atomix.protocols.raft.partition.RaftPartition;
 import io.zeebe.broker.Broker;
 import io.zeebe.broker.it.clustering.ClusteringRule;
 import io.zeebe.broker.it.util.GrpcClientRule;
+import io.zeebe.util.FileUtil;
 import io.zeebe.util.LangUtil;
 import java.io.File;
 import java.io.IOException;
@@ -24,6 +25,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -94,6 +96,7 @@ public class HealthMonitoringTest {
   }
 
   private void corruptAllSnapshots(final Broker leader) {
+    // corrupt snapshot to fail leader installation
     final File snapshotsDir = clusteringRule.getSnapshotsDirectory(leader);
     Arrays.stream(snapshotsDir.listFiles())
         .filter(File::isDirectory)
@@ -104,6 +107,16 @@ public class HealthMonitoringTest {
                   .filter(f -> f.getName().contains("MANIFEST"))
                   .forEach(File::delete);
             });
+    // corrupt pending directory to fail follower installation
+    final Path segmentsDirectory = clusteringRule.getSegmentsDirectory(leader);
+    final Path pendingSnapshots = segmentsDirectory.resolve("pushed-pending");
+    try {
+      FileUtil.deleteFolder(pendingSnapshots);
+      // Create a file instead of an expected directory
+      pendingSnapshots.toFile().createNewFile();
+    } catch (final IOException e) {
+      e.printStackTrace();
+    }
   }
 
   private boolean isBrokerHealthy(final Broker broker) {

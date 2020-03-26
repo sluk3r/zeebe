@@ -66,6 +66,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 
 public final class ZeebePartition extends Actor
@@ -190,18 +191,19 @@ public final class ZeebePartition extends Actor
         .onComplete(
             (success, error) -> {
               if (error == null) {
-                partitionListeners.stream()
-                    .map(l -> l.onBecomingLeader(partitionId, newTerm, logStream))
-                    .forEach(
-                        future ->
-                            future.onComplete(
-                                (v, t) -> {
-                                  // Compare with the current term in case a new role transition
-                                  // happened
-                                  if (t != null && this.term == newTerm) {
-                                    onInstallFailure();
-                                  }
-                                }));
+                final List<ActorFuture<Void>> listenerFutures =
+                    partitionListeners.stream()
+                        .map(l -> l.onBecomingLeader(partitionId, newTerm, logStream))
+                        .collect(Collectors.toList());
+                actor.runOnCompletion(
+                    listenerFutures,
+                    t -> {
+                      // Compare with the current term in case a new role transition
+                      // happened
+                      if (t != null && this.term == newTerm) {
+                        onInstallFailure();
+                      }
+                    });
                 onRecoveredInternal();
               } else {
                 LOG.error("Failed to install leader partition {}", partitionId, error);
@@ -220,7 +222,6 @@ public final class ZeebePartition extends Actor
                 onRecoveredInternal();
               } else {
                 LOG.error("Failed to install follower partition {}", partitionId, error);
-                // we should probably retry here
                 onInstallFailure();
               }
             });
