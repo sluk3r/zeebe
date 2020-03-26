@@ -199,13 +199,13 @@ public final class ZeebePartition extends Actor
                                   // Compare with the current term in case a new role transition
                                   // happened
                                   if (t != null && this.term == newTerm) {
-                                    onFailureInternal();
+                                    onInstallFailure();
                                   }
                                 }));
                 onRecoveredInternal();
               } else {
                 LOG.error("Failed to install leader partition {}", partitionId, error);
-                onFailureInternal();
+                onInstallFailure();
               }
             });
   }
@@ -221,7 +221,7 @@ public final class ZeebePartition extends Actor
               } else {
                 LOG.error("Failed to install follower partition {}", partitionId, error);
                 // we should probably retry here
-                onFailureInternal();
+                onInstallFailure();
               }
             });
   }
@@ -315,7 +315,7 @@ public final class ZeebePartition extends Actor
                   snapshotController.recover();
                   zeebeDb = snapshotController.openDb();
                 } catch (final Exception e) {
-                  onFailureInternal();
+                  onInstallFailure();
                   LOG.error("Failed to recover from snapshot", e);
                   installFuture.completeExceptionally(
                       new IllegalStateException(
@@ -347,7 +347,7 @@ public final class ZeebePartition extends Actor
                   logStream.setCommitPosition(deferredCommitPosition);
                   deferredCommitPosition = -1;
                 }
-                criticalComponentsHealthMonitor.registerComponent("logstream", logStream);
+                criticalComponentsHealthMonitor.registerComponent("logStream", logStream);
                 installStorageServices()
                     .onComplete(
                         (deletionService, errorInstall) -> {
@@ -360,7 +360,7 @@ public final class ZeebePartition extends Actor
               } else {
                 LOG.error("Failed to install log stream for partition {}", partitionId, error);
                 installFuture.completeExceptionally(error);
-                onFailureInternal();
+                onInstallFailure();
               }
             });
     return installFuture;
@@ -698,7 +698,7 @@ public final class ZeebePartition extends Actor
 
   @Override
   public void onFailure() {
-    actor.run(this::onFailureInternal);
+    actor.run(() -> updateHealthStatus(HealthStatus.UNHEALTHY));
   }
 
   @Override
@@ -706,10 +706,10 @@ public final class ZeebePartition extends Actor
     actor.run(this::onRecoveredInternal);
   }
 
-  private void onFailureInternal() {
+  private void onInstallFailure() {
     updateHealthStatus(HealthStatus.UNHEALTHY);
     if (atomixRaftPartition.getRole() == Role.LEADER) {
-      LOG.info("Unexpected failures occurred in leader services, stepping down");
+      LOG.info("Unexpected failures occurred when installing leader services, stepping down");
       atomixRaftPartition.stepDown();
     }
   }

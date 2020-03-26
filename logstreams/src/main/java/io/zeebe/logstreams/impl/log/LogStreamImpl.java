@@ -187,7 +187,7 @@ public final class LogStreamImpl extends Actor implements LogStream, FailureList
       return closeFuture;
     }
 
-    actor.call(
+    actor.run(
         () ->
             closeAppender()
                 .onComplete(
