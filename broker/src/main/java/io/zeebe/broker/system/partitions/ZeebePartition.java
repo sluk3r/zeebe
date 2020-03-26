@@ -709,6 +709,7 @@ public final class ZeebePartition extends Actor
   private void onFailureInternal() {
     updateHealthStatus(HealthStatus.UNHEALTHY);
     if (atomixRaftPartition.getRole() == Role.LEADER) {
+      LOG.info("Unexpected failures occurred in leader services, stepping down");
       atomixRaftPartition.stepDown();
     }
   }
