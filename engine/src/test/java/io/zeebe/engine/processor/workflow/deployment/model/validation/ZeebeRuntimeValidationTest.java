@@ -15,6 +15,7 @@ import io.zeebe.el.ExpressionLanguageFactory;
 import io.zeebe.model.bpmn.Bpmn;
 import io.zeebe.model.bpmn.BpmnModelInstance;
 import io.zeebe.model.bpmn.instance.ConditionExpression;
+import io.zeebe.model.bpmn.instance.Message;
 import io.zeebe.model.bpmn.instance.zeebe.ZeebeCalledElement;
 import io.zeebe.model.bpmn.instance.zeebe.ZeebeInput;
 import io.zeebe.model.bpmn.instance.zeebe.ZeebeLoopCharacteristics;
@@ -183,7 +184,7 @@ public final class ZeebeRuntimeValidationTest {
             .message(b -> b.nameExpression(INVALID_EXPRESSION).zeebeCorrelationKey("1"))
             .endEvent()
             .done(),
-        Arrays.asList(expect(ZeebeSubscription.class, INVALID_EXPRESSION_MESSAGE))
+        Arrays.asList(expect(Message.class, INVALID_EXPRESSION_MESSAGE))
       },
       {
         // invalid correlation key expression
