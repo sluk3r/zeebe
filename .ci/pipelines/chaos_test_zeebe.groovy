@@ -58,6 +58,8 @@ pipeline {
                         sh "cp -v ${CHAOS_TEST_NAMESPACE}/zeebe-cluster/templates/* kustomize/"
                         sh "cp -v worker.yaml kustomize/"
                         sh "kubectl apply -k kustomize"
+                        sh "kubectl get pods"
+                        sh "kubectl describe pods"
                       }
                     }
                 }
