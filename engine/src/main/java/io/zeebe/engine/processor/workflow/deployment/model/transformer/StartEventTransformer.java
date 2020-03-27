@@ -31,6 +31,8 @@ public final class StartEventTransformer implements ModelElementTransformer<Star
     final ExecutableStartEvent startEvent =
         workflow.getElementById(element.getId(), ExecutableStartEvent.class);
 
+    context.getExpressionLanguage();
+
     startEvent.setInterrupting(element.isInterrupting());
 
     if (element.getScope() instanceof FlowNode) {

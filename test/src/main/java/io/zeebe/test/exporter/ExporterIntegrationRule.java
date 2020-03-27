@@ -122,7 +122,8 @@ public class ExporterIntegrationRule extends ExternalResource {
       Bpmn.createExecutableProcess("testProcess")
           .startEvent()
           .intermediateCatchEvent(
-              "message", e -> e.message(m -> m.name("catch").zeebeCorrelationKey("orderId")))
+              "message",
+              e -> e.message(m -> m.name("catch").zeebeCorrelationKeyExpression("orderId")))
           .serviceTask("task", t -> t.zeebeJobType("work").zeebeTaskHeader("foo", "bar"))
           .endEvent()
           .done();

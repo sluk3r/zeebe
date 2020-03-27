@@ -9,6 +9,7 @@ package io.zeebe.engine.processor.workflow.deployment.model.validation;
 
 import io.zeebe.el.ExpressionLanguage;
 import io.zeebe.model.bpmn.instance.ConditionExpression;
+import io.zeebe.model.bpmn.instance.Message;
 import io.zeebe.model.bpmn.instance.zeebe.ZeebeCalledElement;
 import io.zeebe.model.bpmn.instance.zeebe.ZeebeInput;
 import io.zeebe.model.bpmn.instance.zeebe.ZeebeLoopCharacteristics;
@@ -31,6 +32,9 @@ public final class ZeebeRuntimeValidators {
         ZeebeExpressionValidator.verifyThat(ZeebeOutput.class)
             .hasValidNonStaticExpression(ZeebeOutput::getSource)
             .hasValidPath(ZeebeOutput::getTarget)
+            .build(expressionLanguage),
+        ZeebeExpressionValidator.verifyThat(Message.class)
+            .hasValidExpression(Message::getName)
             .build(expressionLanguage),
         ZeebeExpressionValidator.verifyThat(ZeebeSubscription.class)
             .hasValidExpression(ZeebeSubscription::getCorrelationKey)

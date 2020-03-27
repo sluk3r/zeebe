@@ -226,7 +226,7 @@ public final class MultiInstanceSubProcessTest {
         workflow(
             b ->
                 b.intermediateCatchEvent()
-                    .message(m -> m.name("message").zeebeCorrelationKey(INPUT_ELEMENT)));
+                    .message(m -> m.name("message").zeebeCorrelationKeyExpression(INPUT_ELEMENT)));
 
     ENGINE.deployment().withXmlResource(workflow).deploy();
 

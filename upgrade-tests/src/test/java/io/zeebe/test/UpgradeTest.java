@@ -244,7 +244,7 @@ public class UpgradeTest {
     return Bpmn.createExecutableProcess(PROCESS_ID)
         .startEvent()
         .intermediateCatchEvent(
-            "catch", b -> b.message(m -> m.name(MESSAGE).zeebeCorrelationKey("key")))
+            "catch", b -> b.message(m -> m.name(MESSAGE).zeebeCorrelationKeyExpression("key")))
         .endEvent()
         .done();
   }
@@ -271,7 +271,7 @@ public class UpgradeTest {
   private static BpmnModelInstance msgStartWorkflow() {
     return Bpmn.createExecutableProcess(PROCESS_ID)
         .startEvent()
-        .message(b -> b.zeebeCorrelationKey("key").name(MESSAGE))
+        .message(b -> b.zeebeCorrelationKeyExpression("key").name(MESSAGE))
         .endEvent()
         .done();
   }

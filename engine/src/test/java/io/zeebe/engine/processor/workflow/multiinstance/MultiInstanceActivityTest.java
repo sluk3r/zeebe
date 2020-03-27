@@ -71,7 +71,7 @@ public final class MultiInstanceActivityTest {
                   .zeebeOutputElement(OUTPUT_ELEMENT_VARIABLE));
 
   private static final Consumer<MessageBuilder> MESSAGE_BUILDER =
-      m -> m.name(MESSAGE_NAME).zeebeCorrelationKey(MESSAGE_CORRELATION_KEY_VARIABLE);
+      m -> m.name(MESSAGE_NAME).zeebeCorrelationKeyExpression(MESSAGE_CORRELATION_KEY_VARIABLE);
 
   @Rule
   public final RecordingExporterTestWatcher recordingExporterTestWatcher =

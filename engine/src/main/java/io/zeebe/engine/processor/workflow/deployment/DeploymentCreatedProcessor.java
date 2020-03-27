@@ -7,11 +7,13 @@
  */
 package io.zeebe.engine.processor.workflow.deployment;
 
+import io.zeebe.el.Expression;
 import io.zeebe.engine.processor.TypedRecord;
 import io.zeebe.engine.processor.TypedRecordProcessor;
 import io.zeebe.engine.processor.TypedResponseWriter;
 import io.zeebe.engine.processor.TypedStreamWriter;
 import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableCatchEventElement;
+import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableMessage;
 import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableStartEvent;
 import io.zeebe.engine.processor.workflow.deployment.model.element.ExecutableWorkflow;
 import io.zeebe.engine.state.deployment.DeployedWorkflow;
@@ -22,6 +24,8 @@ import io.zeebe.protocol.impl.record.value.message.MessageStartEventSubscription
 import io.zeebe.protocol.record.intent.DeploymentIntent;
 import io.zeebe.protocol.record.intent.MessageStartEventSubscriptionIntent;
 import java.util.List;
+import java.util.Optional;
+import org.agrona.concurrent.UnsafeBuffer;
 
 public final class DeploymentCreatedProcessor implements TypedRecordProcessor<DeploymentRecord> {
 
@@ -99,13 +103,24 @@ public final class DeploymentCreatedProcessor implements TypedRecordProcessor<De
     // if startEvents contain message events
     for (final ExecutableCatchEventElement startEvent : startEvents) {
       if (startEvent.isMessage()) {
-        subscriptionRecord.reset();
-        subscriptionRecord
-            .setMessageName(startEvent.getMessage().getMessageName())
-            .setWorkflowKey(workflowKey)
-            .setBpmnProcessId(workflow.getId())
-            .setStartEventId(startEvent.getId());
-        streamWriter.appendNewCommand(MessageStartEventSubscriptionIntent.OPEN, subscriptionRecord);
+        final ExecutableMessage message = startEvent.getMessage();
+        final Expression messageNameExpression = message.getMessageNameExpression();
+
+        final Optional<String> optMessageName = message.getMessageName();
+        final org.agrona.DirectBuffer messageNameBuffer = new UnsafeBuffer();
+        messageNameBuffer.wrap(optMessageName.get().getBytes());
+
+        optMessageName.ifPresent(
+            messageName -> {
+              subscriptionRecord.reset();
+              subscriptionRecord
+                  .setMessageName(messageNameBuffer)
+                  .setWorkflowKey(workflowKey)
+                  .setBpmnProcessId(workflow.getId())
+                  .setStartEventId(startEvent.getId());
+              streamWriter.appendNewCommand(
+                  MessageStartEventSubscriptionIntent.OPEN, subscriptionRecord);
+            });
       }
     }
   }
