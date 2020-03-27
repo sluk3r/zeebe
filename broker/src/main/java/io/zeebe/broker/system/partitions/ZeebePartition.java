@@ -217,8 +217,19 @@ public final class ZeebePartition extends Actor
         .onComplete(
             (success, error) -> {
               if (error == null) {
-                partitionListeners.forEach(
-                    l -> l.onBecomingFollower(partitionId, newTerm, logStream));
+                final List<ActorFuture<Void>> listenerFutures =
+                    partitionListeners.stream()
+                        .map(l -> l.onBecomingFollower(partitionId, newTerm, logStream))
+                        .collect(Collectors.toList());
+                actor.runOnCompletion(
+                    listenerFutures,
+                    t -> {
+                      // Compare with the current term in case a new role transition
+                      // happened
+                      if (t != null && this.term == newTerm) {
+                        onInstallFailure();
+                      }
+                    });
                 onRecoveredInternal();
               } else {
                 LOG.error("Failed to install follower partition {}", partitionId, error);
