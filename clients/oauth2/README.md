@@ -9,7 +9,6 @@ Each set up consists of a docker-compose file which sets up the following stack:
 1. keycloak or hydra
 1. nginx
 1. zeebe broker
-1. one-shot setup container
 
 ## Usage
 
@@ -62,9 +61,11 @@ The Zeebe broker is configured to use the latest stable image at the moment; all
 using the default configuration. One important thing to note is that the embedded gateway must be
 enabled.
 
-### setup container
+### setup
 
-The set up container in each project is meant to be there to create the necessary missing pieces.
-In both cases it will create an authorized Zeebe client with ID `zeebe` and secret `secret`, and
-audience `127.0.0.1`. Running the container more than once may result in errors, but those can
-safely be ignored.
+Hydra requires a "setup" container which will create our initial client with a pre-defined secret
+(see the `setup.sh` script). Keycloak, on the other, comes with a pre-generated `zeebe-realm.json`
+which is imported at start up, and already contains the proxy and the zeebe client credentials.
+
+In both cases there will be an authorized Zeebe client with ID `zeebe` and secret `secret`, and
+audience `127.0.0.1`.

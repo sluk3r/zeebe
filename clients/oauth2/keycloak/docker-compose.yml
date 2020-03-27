@@ -11,22 +11,14 @@ services:
     environment:
       - KEYCLOAK_USER=admin
       - KEYCLOAK_PASSWORD=admin
+      - KEYCLOAK_IMPORT=/tmp/zeebe-realm.json
     restart: unless-stopped
+    volumes:
+      - ./zeebe-realm.json:/tmp/zeebe-realm.json
     networks:
       vpc:
         aliases:
           - keycloak
-  setup:
-    image: jboss/keycloak:latest
-    entrypoint: /setup.sh
-    depends_on:
-      - keycloak
-    volumes:
-      - ./setup.sh:/setup.sh
-    networks:
-      vpc:
-        aliases:
-          - setup
   proxy:
     image: nginx:alpine
     volumes:
