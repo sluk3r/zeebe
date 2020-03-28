@@ -25,6 +25,7 @@ import io.atomix.storage.StorageLevel;
 import io.atomix.storage.journal.JournalReader.Mode;
 import io.atomix.storage.journal.index.SparseJournalIndex;
 import io.atomix.utils.serializer.Namespace;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -54,7 +55,8 @@ public abstract class AbstractJournalTest {
   private final int maxSegmentSize;
   private final int cacheSize;
 
-  private SegmentedJournal<TestEntry> journal;
+  protected SegmentedJournal<TestEntry> journal;
+  private File folder;
 
   protected AbstractJournalTest(final int maxSegmentSize, final int cacheSize) {
     this.maxSegmentSize = maxSegmentSize;
@@ -80,7 +82,7 @@ public abstract class AbstractJournalTest {
     final SparseJournalIndex index = new SparseJournalIndex(5);
     return SegmentedJournal.<TestEntry>builder()
         .withName("test")
-        .withDirectory(temporaryFolder.newFolder())
+        .withDirectory(folder)
         .withNamespace(NAMESPACE)
         .withStorageLevel(storageLevel())
         .withMaxSegmentSize(maxSegmentSize)
@@ -414,11 +416,13 @@ public abstract class AbstractJournalTest {
 
   @Before
   public void startup() throws IOException {
+    folder = temporaryFolder.newFolder();
     journal = createJournal();
   }
 
   @After
   public void cleanupStorage() {
+    folder = null;
     journal.close();
     temporaryFolder.delete();
   }
