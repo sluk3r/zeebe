@@ -51,11 +51,12 @@ public abstract class AbstractJournalTest {
       Namespace.builder().register(TestEntry.class).register(byte[].class).build();
 
   @Rule public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
   protected final int entriesPerSegment;
+  protected SegmentedJournal<TestEntry> journal;
+
   private final int maxSegmentSize;
   private final int cacheSize;
-
-  protected SegmentedJournal<TestEntry> journal;
   private File folder;
 
   protected AbstractJournalTest(final int maxSegmentSize, final int cacheSize) {
